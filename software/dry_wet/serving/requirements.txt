@@ -1,0 +1,11 @@
+mlflow
+fastapi
+uvicorn
+torch
+torchvision
+Pillow
+numpy
+PyYAML
+efficientnet-pytorch 
+boto3
+python-multipart

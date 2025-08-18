@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dry-wet-model-deployment
+  namespace: kubeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dry-wet-model
+  template:
+    metadata:
+      labels:
+        app: dry-wet-model
+    spec:
+      containers:
+      - name: dry-wet-model
+        image: dry_wet_serving:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5001
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow-service.mlflow.svc.cluster.local:5000"
+        - name: MLFLOW_S3_ENDPOINT_URL
+          value: "http://minio-service.kubeflow.svc.cluster.local:9000"
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: mlpipeline-minio-artifact
+              key: accesskey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlpipeline-minio-artifact
+              key: secretkey
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dry-wet-model-service
+  namespace: kubeflow
+spec:
+  selector:
+    app: dry-wet-model
+  ports:
+    - protocol: TCP
+      port: 5001  # ✅ External port
+      targetPort: 5001  # ✅ MLflow internal port
+  type: ClusterIP
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: dry-wet-model-vs
+  namespace: kubeflow
+spec:
+  hosts:
+    - "*"  # Use a dummy host, keep this in mind when accessing the api
+  gateways:
+    - istio-system/mlops-gateway
+  http:
+    - match:
+        - uri:
+            exact: /dry-wet-model
+      redirect:
+          uri: /dry-wet-model/
+    - match:
+        - uri:
+            prefix: /dry-wet-model/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: dry-wet-model-service.kubeflow.svc.cluster.local
+            port:
+              number: 5001
+---

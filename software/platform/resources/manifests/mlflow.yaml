@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+      - name: mlflow
+        image: ghcr.io/mlflow/mlflow:v2.20.3
+        command:
+          - "mlflow"
+          - "server"
+          - "--host"
+          - "0.0.0.0"
+          - "--port"
+          - "5000"
+          - "--backend-store-uri"
+          - "sqlite:///mlflow.db"
+          - "--default-artifact-root"
+          - "s3://ml-models/"
+          - "--serve-artifacts"
+        env:
+        - name: MLFLOW_S3_ENDPOINT_URL
+          value: "http://minio-service.kubeflow.svc.cluster.local:9000"  # Point to the internal Minio service address
+        - name: AWS_ACCESS_KEY_ID
+          value: "minio"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "minio123"
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-service
+  namespace: mlflow
+spec:
+  selector:
+    app: mlflow
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: mlflow-vs
+  namespace: mlflow
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - istio-system/mlops-gateway
+  http:
+  - match:
+    - uri:
+        exact: /mlflow
+    redirect:
+      uri: /mlflow/
+  - match:
+      - uri:
+          prefix: /mlflow/
+    rewrite:
+      uri: "/"
+    route:
+    - destination:
+        host: mlflow-service.mlflow.svc.cluster.local
+        port:
+          number: 5000
