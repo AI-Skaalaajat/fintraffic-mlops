@@ -1,0 +1,10 @@
+boto3
+numpy==1.26.4
+mlflow==2.20.3
+Pillow
+scikit-learn
+tqdm
+opencv-python-headless
+PyYAML 
+minio
+efficientnet-pytorch

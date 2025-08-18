@@ -1,0 +1,56 @@
+# Training Configuration
+training:
+  img_size: 600
+  batch_size: 16
+  epochs: 15
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  num_workers: 0
+  
+# Data Configuration
+data:
+  data_path: "data"
+  test_size: 0.15
+  random_state: 42
+
+# Model Configuration
+model:
+  pretrained_path: "efficientnet-b3-pretrained.pth"
+
+# Augmentation Configuration
+augmentation:
+  horizontal_flip_prob: 0.5
+  rotation_degrees: 15
+  brightness_range: 0.3
+  contrast_range: 0.3
+  saturation_range: 0.3
+  translate: [0.1, 0.1]
+  scale: [0.9, 1.1]
+
+# Loss Configuration
+loss:
+  focal_loss_gamma: 2.0
+
+# Scheduler Configuration
+scheduler:
+  mode: "max"
+  factor: 0.5
+  patience: 3
+  verbose: true
+
+# Early Stopping Configuration
+early_stopping:
+  patience: 5
+  min_delta: 0.001
+
+# Normalization Configuration
+normalization:
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+
+# MLflow Configuration
+mlflow:
+  experiment_name: "Dry-Wet Road Classification"
+
+# Random Seed
+random_seed: 42 
