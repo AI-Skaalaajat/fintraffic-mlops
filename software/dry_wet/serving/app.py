@@ -5,6 +5,7 @@ import mlflow
 import torch
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
 from PIL import Image
 from torchvision import transforms
 
@@ -58,6 +59,18 @@ app = FastAPI(
     description="Accepts an image and returns 'dry' or 'wet' classification.",
     version="1.0.0"
 )
+
+# --- Version Loading ---
+def load_image_version(version_file="version.txt"):
+    """Load the image version from a file."""
+    try:
+        with open(version_file, 'r') as f:
+            version = f.read().strip()
+        return version
+    except FileNotFoundError:
+        return "unknown"
+
+image_version = load_image_version()
 
 # --- Model Loading ---
 # Load the model from MLflow Model Registry at startup.
@@ -123,14 +136,15 @@ def health_check():
         "status": "ok", 
         "model_loaded": model is not None,
         "model_version": model_version,
-        "model_stage": model_stage
+        "model_stage": model_stage,
+        "image_version": image_version
     }
 
 @app.get("/model/info", summary="Model Information", description="Get information about the currently loaded model.")
 def get_model_info():
     """Get detailed information about the currently loaded model."""
     if not model:
-        return {"error": "No model loaded"}, 404
+        return JSONResponse(status_code=404, content={"error": "No model loaded"})
     
     return {
         "model_name": model_name,
@@ -152,10 +166,13 @@ def reload_model():
             "status": "success"
         }
     else:
-        return {
-            "message": "Failed to reload model",
-            "status": "error"
-        }, 500
+        return JSONResponse(
+            status_code=500,
+            content={
+                "message": "Failed to reload model",
+                "status": "error"
+            }
+        )
 
 @app.post("/predict", summary="Classify Road Condition", description="Upload an image to classify if the road is 'dry' or 'wet'.")
 async def predict(file: UploadFile = File(...)):
@@ -166,7 +183,10 @@ async def predict(file: UploadFile = File(...)):
     # and return a detailed error message.
     try:
         if not model:
-            return {"error": "Model is not loaded, cannot perform prediction."}, 500
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Model is not loaded, cannot perform prediction."}
+            )
 
         # Read image data
         contents = await file.read()
@@ -190,11 +210,14 @@ async def predict(file: UploadFile = File(...)):
         print(f"❌ Error during prediction: {e}")
         import traceback
         traceback.print_exc()
-        return {
-            "error": "An error occurred during prediction.",
-            "error_type": str(type(e).__name__),
-            "error_details": str(e)
-        }, 500
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "An error occurred during prediction.",
+                "error_type": str(type(e).__name__),
+                "error_details": str(e)
+            }
+        )
 
 # --- Main execution ---
 if __name__ == "__main__":
