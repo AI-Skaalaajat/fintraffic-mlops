@@ -388,6 +388,15 @@ def train(config, device, model_output_path=None):
 
 def main():
     """Main function to run the training pipeline."""
+    
+    # --- Print training image version ---
+    try:
+        with open("version.txt", 'r') as f:
+            version = f.read().strip()
+        print(f"--- Training Image Version: {version} ---")
+    except FileNotFoundError:
+        print("--- Training Image Version: unknown ---")
+
     # --- Configuration and Argument Parsing ---
     parser = argparse.ArgumentParser(description="Train a road condition classifier for dry/wet surfaces.")
     parser.add_argument(

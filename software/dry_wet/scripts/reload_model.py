@@ -1,19 +1,16 @@
 import requests
 import json
+import argparse
 
 # --- Configuration ---
 # URL of the FastAPI model reload endpoint
 
-BASE_URL = "http://10.106.238.203/dry-wet-model"
-RELOAD_URL = f"{BASE_URL}/model/reload"
-INFO_URL = f"{BASE_URL}/model/info"
-HEALTH_URL = f"{BASE_URL}/"
 
-def check_health():
+def check_health(health_url: str):
     """Check if the service is running and model status."""
     try:
-        print(f"🔍 Checking service health at {HEALTH_URL}")
-        response = requests.get(HEALTH_URL, timeout=10)
+        print(f"🔍 Checking service health at {health_url}")
+        response = requests.get(health_url, timeout=10)
         response.raise_for_status()
         
         result = response.json()
@@ -25,18 +22,18 @@ def check_health():
         return result.get('model_loaded', False)
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ Error: Failed to connect to the service at {HEALTH_URL}")
+        print(f"❌ Error: Failed to connect to the service at {health_url}")
         print(f"   - Details: {e}")
         return False
     except Exception as e:
         print(f"❌ Unexpected error during health check: {e}")
         return False
 
-def get_model_info():
+def get_model_info(info_url: str):
     """Get detailed model information."""
     try:
-        print(f"📋 Getting model info from {INFO_URL}")
-        response = requests.get(INFO_URL, timeout=10)
+        print(f"📋 Getting model info from {info_url}")
+        response = requests.get(info_url, timeout=10)
         response.raise_for_status()
         
         result = response.json()
@@ -46,22 +43,22 @@ def get_model_info():
         return result
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ Error: Failed to get model info from {INFO_URL}")
+        print(f"❌ Error: Failed to get model info from {info_url}")
         print(f"   - Details: {e}")
         return None
     except Exception as e:
         print(f"❌ Unexpected error getting model info: {e}")
         return None
 
-def reload_model():
+def reload_model(reload_url: str):
     """
     Send a request to reload the model from MLflow Model Registry.
     """
     try:
-        print(f"🔄 Sending reload request to {RELOAD_URL}")
+        print(f"🔄 Sending reload request to {reload_url}")
         
         # Send the POST request to reload the model
-        response = requests.post(RELOAD_URL, timeout=60)  # Longer timeout for model loading
+        response = requests.post(reload_url, timeout=60)  # Longer timeout for model loading
         
         # Raise an exception for unsuccessful status codes (4xx or 5xx)
         response.raise_for_status()
@@ -81,7 +78,7 @@ def reload_model():
         print(f"   - Try checking the service status after a few minutes.")
         return False
     except requests.exceptions.RequestException as e:
-        print(f"❌ Error: Failed to connect to the server at {RELOAD_URL}")
+        print(f"❌ Error: Failed to connect to the server at {reload_url}")
         print(f"   - Please make sure the serving application is running.")
         print(f"   - Details: {e}")
         
@@ -99,13 +96,28 @@ def reload_model():
 
 def main():
     """Main function to orchestrate the model reload process."""
+    parser = argparse.ArgumentParser(description="Client to trigger model reload on the serving API.")
+    parser.add_argument(
+        "--api-ip",
+        type=str,
+        default="localhost",
+        help="IP address of the FastAPI serving endpoint."
+    )
+    args = parser.parse_args()
+
+    # Construct URLs based on the provided IP
+    base_url = f"http://{args.api_ip}/dry-wet-model"
+    reload_url = f"{base_url}/model/reload"
+    info_url = f"{base_url}/model/info"
+    health_url = f"{base_url}/"
+
     print("=" * 60)
     print("🤖 MLflow Model Reload Client")
     print("=" * 60)
     
     # Step 1: Check service health
     print("\n📡 Step 1: Checking service health...")
-    is_healthy = check_health()
+    is_healthy = check_health(health_url)
     
     if not is_healthy:
         print("\n⚠️  Service appears to be down or model is not loaded.")
@@ -113,18 +125,18 @@ def main():
     
     # Step 2: Get current model info (optional, before reload)
     print("\n📋 Step 2: Getting current model information...")
-    old_info = get_model_info()
+    old_info = get_model_info(info_url)
     
     # Step 3: Reload the model
     print("\n🔄 Step 3: Reloading model...")
-    reload_success = reload_model()
+    reload_success = reload_model(reload_url)
     
     if reload_success:
         print("\n📋 Step 4: Getting updated model information...")
         # Give the server a moment to complete the reload
         import time
         time.sleep(2)
-        new_info = get_model_info()
+        new_info = get_model_info(info_url)
         
         # Compare versions if both are available
         if old_info and new_info:
