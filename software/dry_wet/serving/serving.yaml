@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: dry-wet-model
-        image: dry_wet_serving:latest
+        image: dry_wet_serving:v1.0.0
         imagePullPolicy: Never
         ports:
         - containerPort: 5001

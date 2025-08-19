@@ -29,13 +29,9 @@ if command -v minikube &> /dev/null; then
     # This command configures your shell to use the Docker daemon inside Minikube.
     eval $(minikube docker-env)
     echo "Docker environment is now set for Minikube."
-elif command -v kind &> /dev/null; then
-    echo "Found 'kind'. Note: 'kind' uses a different mechanism ('kind load docker-image')."
-    # For kind, you first build the image normally, then load it. This script will proceed
-    # with a standard 'docker build', and you may need to run 'kind load' separately.
 fi
 
-# Define the image name and tag. This MUST match the `TRAINING_IMAGE` in `pipeline.py`.
+# For the initial setup, we build the baseline v1.0.0 version.
 IMAGE_NAME="dry_wet_train:v1.0.0"
 
 # Build the image using the Dockerfile in the 'training' directory.
@@ -48,9 +44,15 @@ docker build -t "$IMAGE_NAME" -f ./training/Dockerfile ./training
 
 echo "✅ Image '$IMAGE_NAME' built successfully."
 
+echo "------------------------------------------------------------------"
+sleep 1
+
+# --- 2. Build Serving Image ---
 echo "🏗️  Step 2: Building the serving Docker image..."
 
-SERVING_IMAGE_NAME="dry_wet_serving:latest"
+# For the initial setup, we build the baseline v1.0.0 version.
+SERVING_IMAGE_NAME="dry_wet_serving:v1.0.0"
+
 echo "Building image '$SERVING_IMAGE_NAME' from './serving' directory context..."
 docker build -t "$SERVING_IMAGE_NAME" -f ./serving/Dockerfile ./serving
 
@@ -60,15 +62,15 @@ echo "------------------------------------------------------------------"
 
 # --- 3. Deploy Serving Component ---
 echo "🚢 Step 3: Deploying the serving component..."
-echo "This will apply the 'serving/serving.yaml' manifest to your cluster."
-echo "Note: 'kubectl' is the standard tool for deploying Kubernetes resources."
 
+echo "Applying 'serving/serving.yaml' manifest for initial deployment..."
+# This applies the manifest as is, for initial setup.
 if ! kubectl apply -f ./serving/serving.yaml; then
     echo "❌ Error applying 'serving/serving.yaml'. Please check your kubectl configuration, namespace, and the YAML file."
     exit 1
 fi
-
 echo "✅ Serving component deployment initiated."
+
 echo "It may take a few minutes for the service to become ready."
 echo "You can check the status with: kubectl get inferenceservice -A"
 echo "------------------------------------------------------------------"

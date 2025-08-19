@@ -1,5 +1,6 @@
 import os
 import argparse
+from datetime import datetime
 from minio import Minio
 from minio.error import S3Error
 
@@ -23,10 +24,15 @@ def upload_artifacts_to_minio(
         destination_path (str): A path/prefix to prepend to the object names in the bucket.
     """
     print("--- Model Upload Step ---")
+    
+    # Create a versioned folder name using the destination_path as a base and appending the current date
+    date_suffix = datetime.now().strftime('%Y-%m-%d')
+    versioned_folder_name = f"{destination_path}-{date_suffix}" if destination_path else f"model-{date_suffix}"
+    
     print(f"Configuration:")
     print(f"  MinIO Endpoint: {minio_endpoint}")
     print(f"  Destination Bucket: {bucket_name}")
-    print(f"  Destination Path: {destination_path if destination_path else '/'}")
+    print(f"  Destination Path: {versioned_folder_name}")
     print(f"  Artifacts Source: {model_input_path}")
 
     # 1. Initialize MinIO client
@@ -63,9 +69,9 @@ def upload_artifacts_to_minio(
             for filename in files:
                 local_file_path = os.path.join(root, filename)
                 
-                # Construct the object name for MinIO, including the destination path
+                # Construct the object name for MinIO, including the versioned destination path
                 relative_path = os.path.relpath(local_file_path, model_input_path)
-                object_name = os.path.join(destination_path, relative_path)
+                object_name = os.path.join(versioned_folder_name, relative_path)
                 
                 print(f"  Uploading '{local_file_path}' to '{bucket_name}/{object_name}'...")
                 

@@ -1,0 +1,7 @@
+# dynamically generated pipeline file
+dry_wet/pipeline.yaml
+
+# downloaded files in platform setup
+platform/yq
+platform/mc
+platform/istio-*/
